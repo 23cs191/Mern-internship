@@ -1,85 +1,93 @@
+const { v4: uuidv4 } = require("uuid");
 const express = require("express");
 const mongoose = require("mongoose");
-const { v4 } = require("uuid");
-
 const app = express();
-app.use(express.json());
-mongoose.connect("mongodb://127.0.0.1:27017/expenses").then(() => {
-  console.log("connected to MongoDB");
+app.use(express.json()); // used to paarse the data
+
+mongoose.connect("mongodb+srv://vishnumohans2023cse:vishnu@cluster0.kgc4t.mongodb.net/").then(() => {
+  console.log("connected to Mongodb");
 });
-const expensesSchema = new mongoose.Schema({
-  id: { type: String, require: true, unique: true },
-  title: { type: String, require: true },
-  amount: { type: String, require: true }
+const expenseSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  title: { type: String, required: true },
+  amount: { type: Number, required: true },
 });
-const Expenses = mongoose.model("Expense", expensesSchema);
+const Expense = mongoose.model("Expense", expenseSchema);
 
 app.get("/api/expenses", async (req, res) => {
   try {
-    const expenses = await Expenses.find();
+    const expenses = await Expense.find();
     if (!expenses) {
-      return res.status(404).send({ message: "No expenses found" });
+      res.status(404).send({ message: "No expenses found" });
     }
     res.status(200).json(expenses);
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res.status(500).send({ message: "Internal Server Error" });
   }
 });
-
 app.get("/api/expenses/:id", async (req, res) => {
-  const { id } = req.params;
-  const expenses = await Expenses.findOne({ id });
-  if (!expenses) {
-    return res.status(404).send({ message: "No expenses found" });
+  try {
+    const { id } = req.params;
+    const expense = await Expense.findOne({ id });
+    if (!expense) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    } else {
+      res.status(200).json(expense);
+    }
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error" });
   }
-  res.status(200).json(expenses);
 });
 
 app.post("/api/expenses", async (req, res) => {
-  console.log(req.body);
   const { title, amount } = req.body;
   if (!title || !amount) {
-    return res.status(400).json({ message: "please provide both title and amount" });
+    res.status(400).json({ message: "Title and amount are required" });
+    return;
   }
-  const newExpense = new Expenses({
-    id: v4(),
-    title,
-    amount
+  const newExpense = new Expense({
+    id: uuidv4(),
+    title, // title:title is equal to title
+    amount,
   });
   const savedExpense = await newExpense.save();
   res.status(201).json(savedExpense);
+  res.end();
 });
 
 app.delete("/api/expenses/:id", async (req, res) => {
   const { id } = req.params;
-  const expenses = await Expenses.findOneAndDelete({ id });
-  if (!expenses) {
-    return res.status(404).json({ message: "not found" });
+  try {
+    const deletedExpense = await Expense.findOneAndDelete({ id });
+    if (!deletedExpense) {
+      res.status(400).json({ message: "Expense not found" });
+      return;
+    } else {
+      res.status(200).json({ message: "Deleted Successfully" });
+    }
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error" });
   }
-  res.status(200).json({ message: "Deleted successfully" });
 });
 
 app.put("/api/expenses/:id", async (req, res) => {
   const { id } = req.params;
   const { title, amount } = req.body;
-
   try {
-    const updatedExpense = await Expenses.findOneAndUpdate(
+    const updatedExpense = await Expense.findOneAndUpdate(
       { id },
-      { title, amount },
-      { new: true }
+      { title, amount }
     );
-
     if (!updatedExpense) {
-      return res.status(404).send({ message: "Expense not found" });
+      res.status(400).json({ message: "Expense not found" });
+      return;
     }
-
     res.status(200).json(updatedExpense);
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res.status(500).send({ message: "Internal Server Error" });
   }
 });
-
-app.listen(4000, () => {
-  console.log("Server is running on http://127.0.0.1:4000");
+app.listen(3000, () => {
+  console.log("Server is running");
 });
